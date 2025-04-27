@@ -2,24 +2,95 @@
 using namespace std;
 
 int numSchedulesFor(const Set<Shift>& shifts, int maxHours) {
-    /* TODO: Delete this comment and the lines below it, then implement
-     * this function.
-     */
-    (void) shifts;
-    (void) maxHours;
-    return -1;
+    if (maxHours < 0) {
+        error("maxHours cannot be negative.");
+    }
+
+    Vector<Shift> shiftList;
+    for (Shift s : shifts) {
+        shiftList += s;
+    }
+
+    std::function<int(int, int, Set<Shift>)> countSchedules =
+        [&](int index, int hoursUsed, Set<Shift> chosen) -> int {
+        if (index == shiftList.size()) {
+            return 1;
+        }
+
+        int total = 0;
+        Shift curr = shiftList[index];
+
+        // Option 1: exclude current shift
+        total += countSchedules(index + 1, hoursUsed, chosen);
+
+        // Option 2: include current shift if no overlap and fits in time
+        bool overlaps = false;
+        for (Shift s : chosen) {
+            if (overlapsWith(s, curr)) {
+                overlaps = true;
+                break;
+            }
+        }
+
+        if (!overlaps && hoursUsed + lengthOf(curr) <= maxHours) {
+            Set<Shift> newChosen = chosen;
+            newChosen.add(curr);
+            total += countSchedules(index + 1, hoursUsed + lengthOf(curr), newChosen);
+        }
+
+        return total;
+    };
+
+    return countSchedules(0, 0, {});
 }
 
 Set<Shift> maxProfitSchedule(const Set<Shift>& shifts, int maxHours) {
-    /* TODO: Delete this comment and the lines below it, then implement
-     * this function.
-     */
-    (void) shifts;
-    (void) maxHours;
-    return {};
+    if (maxHours < 0) {
+        error("maxHours cannot be negative.");
+    }
+
+    Vector<Shift> shiftList;
+    for (Shift s : shifts) {
+        shiftList += s;
+    }
+
+    std::function<Set<Shift>(int, int, Set<Shift>)> bestSchedule =
+        [&](int index, int hoursUsed, Set<Shift> chosen) -> Set<Shift> {
+        if (index == shiftList.size()) {
+            return chosen;
+        }
+
+        Shift curr = shiftList[index];
+
+        // Option 1: exclude current shift
+        Set<Shift> without = bestSchedule(index + 1, hoursUsed, chosen);
+
+        // Option 2: include current shift if valid
+        Set<Shift> with = {};
+        bool overlaps = false;
+        for (Shift s : chosen) {
+            if (overlapsWith(s, curr)) {
+                overlaps = true;
+                break;
+            }
+        }
+
+        if (!overlaps && hoursUsed + lengthOf(curr) <= maxHours) {
+            Set<Shift> newChosen = chosen;
+            newChosen.add(curr);
+            with = bestSchedule(index + 1, hoursUsed + lengthOf(curr), newChosen);
+        }
+
+        // Compare profits
+        int profitWith = 0, profitWithout = 0;
+        for (Shift s : with) profitWith += profitFor(s);
+        for (Shift s : without) profitWithout += profitFor(s);
+
+        return (profitWith > profitWithout) ? with : without;
+    };
+
+    return bestSchedule(0, 0, {});
 }
-
-
 
 
 /* * * * * * Test Cases * * * * * */
